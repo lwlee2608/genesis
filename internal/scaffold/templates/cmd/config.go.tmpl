@@ -37,10 +37,10 @@ func InitConfig() {
 	initLogger(config.Log.Level)
 
 	if strings.ToUpper(config.Log.Level) == LOG_LEVEL_DEBUG {
-		configJSON, err := json.MarshalIndent(config, "", "  ")
+		configJSON, err := adder.PrettyJSON(config)
 		if err == nil {
 			fmt.Println("Config loaded:")
-			fmt.Println(string(configJSON))
+			fmt.Println(configJSON)
 		}
 	}
 }
