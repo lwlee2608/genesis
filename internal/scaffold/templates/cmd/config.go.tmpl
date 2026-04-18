@@ -16,7 +16,7 @@ type Config struct {
 
 var config Config
 
-func InitConfig() {
+func InitConfig() error {
 	_ = godotenv.Load()
 
 	adder.SetConfigName("application")
@@ -26,11 +26,11 @@ func InitConfig() {
 	adder.AutomaticEnv()
 
 	if err := adder.ReadInConfig(); err != nil {
-		panic(err)
+		return err
 	}
 
 	if err := adder.Unmarshal(&config); err != nil {
-		panic(err)
+		return err
 	}
 
 	initLogger(config.Log.Level)
@@ -42,4 +42,6 @@ func InitConfig() {
 			slog.Debug(configJSON)
 		}
 	}
+
+	return nil
 }

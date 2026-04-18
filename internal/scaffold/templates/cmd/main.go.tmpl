@@ -19,7 +19,10 @@ var AppVersion = "dev"
 
 func main() {
 {{- if .AddHTTP }}
-	InitConfig()
+	if err := InitConfig(); err != nil {
+		slog.Error("Failed to init config", "error", err)
+		return
+	}
 
 	slog.Info("{{.AppName}}", "version", AppVersion)
 
