@@ -17,7 +17,7 @@ type Config struct {
 var config Config
 
 func InitConfig() error {
-	_ = godotenv.Load()
+	_ = godotenv.Overload()
 
 	adder.SetConfigName("application")
 	adder.AddConfigPath(".")
