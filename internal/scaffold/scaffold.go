@@ -23,8 +23,6 @@ type Config struct {
 }
 
 func Generate(cfg Config) error {
-	// In full-stack mode the Go backend is nested under services/{app}-server,
-	// alongside a sibling services/{app}-web frontend.
 	backendDir := cfg.OutputDir
 	if cfg.FullStack {
 		backendDir = filepath.Join(cfg.OutputDir, "services", cfg.AppName+"-server")
@@ -104,8 +102,6 @@ func Generate(cfg Config) error {
 	}
 
 	if cfg.FullStack {
-		// Frontend is best-effort: the backend is already generated, so surface
-		// any problem (e.g. pnpm missing) as a warning instead of failing.
 		if err := createFrontend(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
 		}
@@ -114,8 +110,6 @@ func Generate(cfg Config) error {
 	return nil
 }
 
-// createFrontend scaffolds a React + Vite + TypeScript app at
-// services/{app}-web by shelling out to `pnpm create vite`.
 func createFrontend(cfg Config) error {
 	servicesDir := filepath.Join(cfg.OutputDir, "services")
 	if err := os.MkdirAll(servicesDir, 0755); err != nil {
