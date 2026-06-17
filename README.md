@@ -5,7 +5,7 @@ A TUI tool for bootstrapping new Go projects.
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lwlee2608/go-bootstrap/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lwlee2608/genesis/main/scripts/install.sh | bash
 ```
 
 Or build from source:
