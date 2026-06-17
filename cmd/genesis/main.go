@@ -61,7 +61,7 @@ func main() {
 	fmt.Println("\nNext steps:")
 	if result.FullStack {
 		fmt.Printf("  cd services/%s-server && make build\n", result.AppName)
-		fmt.Printf("  cd services/%s-web && pnpm install && pnpm dev\n", result.AppName)
+		fmt.Printf("  cd services/%s-web && pnpm install\n", result.AppName)
 	} else {
 		fmt.Println("  make build")
 		fmt.Printf("  ./bin/%s\n", result.AppName)
