@@ -48,6 +48,7 @@ func main() {
 		AppName:    result.AppName,
 		ModuleName: result.ModuleName,
 		AddHTTP:    result.AddHTTP,
+		FullStack:  result.FullStack,
 		OutputDir:  outputDir,
 	}
 
@@ -58,6 +59,11 @@ func main() {
 
 	fmt.Println("\nProject created!")
 	fmt.Println("\nNext steps:")
-	fmt.Println("  make build")
-	fmt.Printf("  ./bin/%s\n", result.AppName)
+	if result.FullStack {
+		fmt.Printf("  cd services/%s-server && make build\n", result.AppName)
+		fmt.Printf("  cd services/%s-web && pnpm install\n", result.AppName)
+	} else {
+		fmt.Println("  make build")
+		fmt.Printf("  ./bin/%s\n", result.AppName)
+	}
 }

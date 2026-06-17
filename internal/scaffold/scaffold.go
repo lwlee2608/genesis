@@ -2,6 +2,7 @@ package scaffold
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -17,17 +18,23 @@ type Config struct {
 	AppName    string
 	ModuleName string
 	AddHTTP    bool
+	FullStack  bool
 	OutputDir  string
 }
 
 func Generate(cfg Config) error {
-	// Create output directory if it doesn't exist
-	if err := os.MkdirAll(cfg.OutputDir, 0755); err != nil {
+	backendDir := cfg.OutputDir
+	if cfg.FullStack {
+		backendDir = filepath.Join(cfg.OutputDir, "services", cfg.AppName+"-server")
+	}
+
+	// Create backend directory if it doesn't exist
+	if err := os.MkdirAll(backendDir, 0755); err != nil {
 		return err
 	}
 
 	// Create pkg directory explicitly
-	if err := os.MkdirAll(filepath.Join(cfg.OutputDir, "pkg"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(backendDir, "pkg"), 0755); err != nil {
 		return err
 	}
 
@@ -71,7 +78,7 @@ func Generate(cfg Config) error {
 			destRelPath = filepath.Join("cmd", cfg.AppName, strings.TrimPrefix(destRelPath, "cmd/"))
 		}
 
-		destPath := filepath.Join(cfg.OutputDir, destRelPath)
+		destPath := filepath.Join(backendDir, destRelPath)
 
 		// Ensure destination directory exists
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
@@ -85,15 +92,43 @@ func Generate(cfg Config) error {
 		return err
 	}
 
-	// Run go mod tidy at the destination
+	// Run go mod tidy at the backend root
 	tidyCmd := exec.Command("go", "mod", "tidy")
-	tidyCmd.Dir = cfg.OutputDir
+	tidyCmd.Dir = backendDir
 	tidyCmd.Stdout = os.Stdout
 	tidyCmd.Stderr = os.Stderr
 	if err := tidyCmd.Run(); err != nil {
 		return err
 	}
 
+	if cfg.FullStack {
+		if err := createFrontend(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+		}
+	}
+
+	return nil
+}
+
+func createFrontend(cfg Config) error {
+	servicesDir := filepath.Join(cfg.OutputDir, "services")
+	if err := os.MkdirAll(servicesDir, 0755); err != nil {
+		return err
+	}
+
+	webName := cfg.AppName + "-web"
+	if _, err := exec.LookPath("pnpm"); err != nil {
+		return fmt.Errorf("pnpm not found on PATH; create the frontend manually with: cd services && pnpm create vite %s --no-interactive --template react-ts", webName)
+	}
+
+	c := exec.Command("pnpm", "create", "vite", webName, "--no-interactive", "--template", "react-ts")
+	c.Dir = servicesDir
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("pnpm create vite failed: %w", err)
+	}
 	return nil
 }
 

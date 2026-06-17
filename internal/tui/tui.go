@@ -13,6 +13,7 @@ const (
 	inputAppName state = iota
 	inputModuleName
 	inputAddHTTP
+	inputFullStack
 	done
 )
 
@@ -20,15 +21,17 @@ type Result struct {
 	AppName    string
 	ModuleName string
 	AddHTTP    bool
+	FullStack  bool
 }
 
 type Model struct {
-	state    state
-	appInput textinput.Model
-	modInput textinput.Model
-	addHTTP  bool
-	result   Result
-	err      error
+	state     state
+	appInput  textinput.Model
+	modInput  textinput.Model
+	addHTTP   bool
+	fullStack bool
+	result    Result
+	err       error
 }
 
 type Options struct {
@@ -108,22 +111,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case inputAddHTTP:
+				m.state = inputFullStack
+				return m, nil
+
+			case inputFullStack:
 				m.result = Result{
 					AppName:    m.appInput.Value(),
 					ModuleName: m.modInput.Value(),
 					AddHTTP:    m.addHTTP,
+					FullStack:  m.fullStack,
 				}
 				m.state = done
 				return m, tea.Quit
 			}
 
 		case tea.KeyRunes:
-			if m.state == inputAddHTTP {
+			switch m.state {
+			case inputAddHTTP:
 				switch string(msg.Runes) {
 				case "y", "Y":
 					m.addHTTP = true
 				case "n", "N":
 					m.addHTTP = false
+				}
+			case inputFullStack:
+				switch string(msg.Runes) {
+				case "y", "Y":
+					m.fullStack = true
+				case "n", "N":
+					m.fullStack = false
 				}
 			}
 		}
@@ -170,9 +186,29 @@ Module: %s
 
 Add http scaffolding? [%s]
 
+(y/n to toggle, Enter to continue, Esc to quit)`,
+			m.appInput.Value(),
+			m.modInput.Value(),
+			yesNo,
+		)
+
+	case inputFullStack:
+		yesNo := "y/N"
+		if m.fullStack {
+			yesNo = "Y/n"
+		}
+		return fmt.Sprintf(`App name: %s
+Module: %s
+HTTP: %v
+
+Full stack? Nest backend under services/%s-server and scaffold services/%s-web frontend [%s]
+
 (y/n to toggle, Enter to generate, Esc to quit)`,
 			m.appInput.Value(),
 			m.modInput.Value(),
+			m.addHTTP,
+			m.appInput.Value(),
+			m.appInput.Value(),
 			yesNo,
 		)
 
@@ -181,10 +217,12 @@ Add http scaffolding? [%s]
   App: %s
   Module: %s
   HTTP Endpoint: %v
+  Full Stack: %v
 `,
 			m.result.AppName,
 			m.result.ModuleName,
 			m.result.AddHTTP,
+			m.result.FullStack,
 		)
 	}
 	return ""
