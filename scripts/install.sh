@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="lwlee2608/go-bootstrap"
+REPO="lwlee2608/genesis"
 BINARY="genesis"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
