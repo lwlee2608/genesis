@@ -118,10 +118,10 @@ func createFrontend(cfg Config) error {
 
 	webName := cfg.AppName + "-web"
 	if _, err := exec.LookPath("pnpm"); err != nil {
-		return fmt.Errorf("pnpm not found on PATH; create the frontend manually with: cd services && pnpm create vite %s --template react-ts", webName)
+		return fmt.Errorf("pnpm not found on PATH; create the frontend manually with: cd services && pnpm create vite %s --no-interactive --template react-ts", webName)
 	}
 
-	c := exec.Command("pnpm", "create", "vite", webName, "--template", "react-ts")
+	c := exec.Command("pnpm", "create", "vite", webName, "--no-interactive", "--template", "react-ts")
 	c.Dir = servicesDir
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
