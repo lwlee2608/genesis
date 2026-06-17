@@ -58,9 +58,11 @@ func New(opts Options) Model {
 	}
 
 	return Model{
-		state:    inputAppName,
-		appInput: appInput,
-		modInput: modInput,
+		state:     inputAppName,
+		appInput:  appInput,
+		modInput:  modInput,
+		addHTTP:   true,
+		fullStack: true,
 	}
 }
 
