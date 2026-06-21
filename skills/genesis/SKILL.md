@@ -63,15 +63,15 @@ Railway project: <app>
 
 ### From scratch
 
-Only `railway login` needs a human (browser, or device code on headless); the rest is scriptable. Create the project and all services first — `railway link` can only target a service that already exists.
+Only `railway login` needs a human (browser, or device code on headless); the rest is scriptable. Create the project and all services first, **in order** — `railway link` can only target a service that already exists, and a reference variable resolves to empty until the service it points at exists: **Postgres before the server** (whose `DB_URL` needs `${{Postgres.DATABASE_URL}}`), then **server before web** (whose `BACKEND_URL` needs `${{<app>-server.RAILWAY_PRIVATE_DOMAIN}}`).
 
 ```sh
 railway login                              # one-time
 
 # create the project + services (run from the repo root)
 railway init --name <app>                  # creates the project, links this dir
-railway add --database postgres            # Postgres service, exposes DATABASE_URL
-railway add --service <app>-server
+railway add --database postgres            # FIRST — exposes DATABASE_URL; ${{Postgres.DATABASE_URL}} is empty until this exists
+railway add --service <app>-server         # before web — web references ${{<app>-server.RAILWAY_PRIVATE_DOMAIN}}
 railway add --service <app>-web
 
 # link + deploy each service from its own subdir
