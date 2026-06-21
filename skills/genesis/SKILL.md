@@ -93,4 +93,16 @@ Notes:
 - **Non-interactive linking:** `railway link` prompts for selections; pass `-p <project> -e production -s <service>` to script it.
 - **CI / no browser:** set `RAILWAY_TOKEN=<project-token>` instead of `railway login` — the only otherwise non-scriptable step.
 - **`railway up` can bootstrap by itself** on a cold run (creates the project + service and deploys; add `-y` to skip prompts). The explicit flow above is preferred because it fixes the service *names*, which the reference variables depend on.
-- **Auto-deploy on push** (instead of `railway up`): connect each service to the GitHub repo with its **Root Directory** set to `services/<app>-*` — `railway service source connect --repo <owner>/<repo> --branch main` from the linked subdir.
+- **Auto-deploy on push** (instead of `railway up`): connect each service to GitHub — see [Connecting GitHub](#connecting-github-auto-deploy) below.
+
+### Connecting GitHub (auto-deploy)
+
+A service created via the CLI is **not connected to GitHub** — it only redeploys on `railway up`. Both the BE (`<app>-server`) and FE (`<app>-web`) services start disconnected and must be wired up. For **each** service, in the Railway dashboard (Service → Settings):
+
+1. **Source** — connect the GitHub repo (`<owner>/<repo>`).
+2. **Root Directory** — set to the service's subdir: `services/<app>-server` for the BE, `services/<app>-web` for the FE.
+3. **Build** — set the builder to **Dockerfile**.
+4. **Watch Paths** — set to the service's subdir (e.g. `services/<app>-server/**`) so only that service rebuilds on a relevant change.
+5. **Restart Policy** — set the number of retries to `1`.
+
+CLI equivalent for the source connect (from the linked subdir): `railway service source connect --repo <owner>/<repo> --branch main`. Root Directory, Dockerfile builder, watch path, and restart policy are dashboard settings.
