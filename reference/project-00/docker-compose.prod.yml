@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: project_00
+      POSTGRES_USER: project_00
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U project_00 -d project_00"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  server:
+    # For real prod, replace `build` with a published image, e.g. ghcr.io/lwlee2608/project-00-server:latest
+    image: project-00:latest
+    build:
+      context: ./services/project-00-server
+    restart: unless-stopped
+    environment:
+      DB_URL: postgres://project_00:${POSTGRES_PASSWORD}@postgres:5432/project_00?sslmode=disable
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: project-00-web:latest
+    build:
+      context: ./services/project-00-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      PORT: 80
+      BACKEND_URL: http://server:8080
+    depends_on:
+      - server
+
+volumes:
+  postgres-data:
