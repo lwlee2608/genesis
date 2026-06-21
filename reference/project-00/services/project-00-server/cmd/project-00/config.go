@@ -6,12 +6,14 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/lwlee2608/adder"
-    "github.com/lwlee2608/project-00/internal/api/http"
+	"github.com/lwlee2608/project-00/internal/api/http"
+	"github.com/lwlee2608/project-00/internal/db"
 )
 
 type Config struct {
 	Log  LogConfig
 	Http http.Config
+	DB   db.Config
 }
 
 var config Config

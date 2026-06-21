@@ -1,14 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
-	internalhttp "github.com/lwlee2608/project-00/internal/api/http"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	internalhttp "github.com/lwlee2608/project-00/internal/api/http"
+	"github.com/lwlee2608/project-00/internal/db"
+	"github.com/lwlee2608/project-00/internal/db/sqlc"
 )
 
 var AppVersion = "dev"
@@ -21,7 +25,26 @@ func main() {
 
 	slog.Info("project-00", "version", AppVersion)
 
-	services := &internalhttp.Services{}
+	if config.DB.URL == "" {
+		slog.Error("db.url is required")
+		os.Exit(1)
+	}
+
+	if err := db.RunMigrations(config.DB.URL, config.DB.Schema); err != nil {
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
+
+	dbPool, err := db.InitDB(context.Background(), config.DB)
+	if err != nil {
+		slog.Error("failed to initialize database", "error", err)
+		os.Exit(1)
+	}
+	defer dbPool.Close()
+
+	services := &internalhttp.Services{
+		Queries: sqlc.New(dbPool),
+	}
 
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()

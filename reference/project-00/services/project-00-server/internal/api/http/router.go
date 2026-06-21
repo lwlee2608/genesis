@@ -1,9 +1,10 @@
 package http
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/lwlee2608/project-00/internal/api/http/handler"
 	"github.com/lwlee2608/project-00/internal/api/http/middleware"
-	"github.com/gin-gonic/gin"
+	"github.com/lwlee2608/project-00/internal/db/sqlc"
 )
 
 type Config struct {
@@ -11,7 +12,7 @@ type Config struct {
 }
 
 type Services struct {
-	// Add your services here
+	Queries *sqlc.Queries
 }
 
 func SetupRoute(engine *gin.Engine, srvs *Services) {
