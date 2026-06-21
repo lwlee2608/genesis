@@ -14,6 +14,29 @@ The template is a monorepo with two services:
 - `services/project-00-web` — React/Vite/TypeScript app (eslint, nginx + entrypoint, Dockerfile)
 - root `docker-compose.yml` (dev: Postgres only) and `docker-compose.prod.yml` (full stack)
 
+## Structure
+
+```
+reference/project-00/
+├── docker-compose.yml          # dev stack: Postgres only
+├── docker-compose.prod.yml     # full stack: postgres + server + web
+├── .env.example
+└── services/
+    ├── project-00-server/      # Go API
+    │   ├── cmd/project-00/      # main, config, logger
+    │   ├── internal/
+    │   │   ├── api/http/        # router, handlers, dto, middleware
+    │   │   └── db/              # migrations, queries, sqlc (generated)
+    │   ├── Dockerfile
+    │   ├── Makefile
+    │   └── sqlc.yaml
+    └── project-00-web/         # React/Vite/TS app
+        ├── src/                # main.tsx, App.tsx
+        ├── Dockerfile          # build + nginx serve
+        ├── nginx.conf
+        └── entrypoint.sh
+```
+
 ## Arguments
 
 The argument (e.g. "Add the server", "Set up sqlc", "Add the web Dockerfile") scopes the work — copy only the matching files, not the whole template. If no argument is given, ask which parts to scaffold.
