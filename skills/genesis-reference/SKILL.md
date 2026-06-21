@@ -59,38 +59,38 @@ Railway project: <app>
         web ──▶ server ──▶ Postgres   (private networking)
 ```
 
-**Linking is per-subdirectory.** The Railway CLI stores link state keyed by absolute directory (in `~/.railway/config.json`), so each service subdir links to its *own* Railway service within the same project and environment. Link them separately:
+**Linking is per-subdirectory.** The Railway CLI keys link state by absolute directory (in `~/.railway/config.json`), so each `services/<app>-*` subdir links to its *own* Railway service within the same project and environment.
+
+### From scratch
+
+Only `railway login` needs a human (browser, or device code on headless); the rest is scriptable. Create the project and all services first — `railway link` can only target a service that already exists.
 
 ```sh
-railway login
+railway login                              # one-time
 
-# server
-cd services/<app>-server
-railway link        # select the project, environment=production, service=<app>-server
-railway up          # build & deploy this dir's Dockerfile to that service
-
-# web
-cd ../<app>-web
-railway link        # same project + environment, service=<app>-web
-railway up
-```
-
-For a brand-new project, create it and its services first, then link/deploy each subdir as above:
-
-```sh
-railway init                       # create the project, name it <app>
-railway add --database postgres    # add the Postgres service
+# create the project + services (run from the repo root)
+railway init --name <app>                  # creates the project, links this dir
+railway add --database postgres            # Postgres service, exposes DATABASE_URL
 railway add --service <app>-server
 railway add --service <app>-web
+
+# link + deploy each service from its own subdir
+cd services/<app>-server
+railway link                               # pick the project, environment, and <app>-server service
+railway variables set 'DB_URL=${{Postgres.DATABASE_URL}}'   # append ?sslmode=disable if pgx needs it
+railway up                                 # builds this dir's Dockerfile and deploys
+
+cd ../<app>-web
+railway link                               # same project/environment, pick the <app>-web service
+railway variables set 'BACKEND_URL=http://${{<app>-server.RAILWAY_PRIVATE_DOMAIN}}:8080'
+railway up
+railway domain                             # generate the public URL for web
 ```
 
-**Cross-service variables** (set in the dashboard or with `railway variables set KEY=VALUE -s <service>`), using Railway reference variables to wire services together:
+The `${{...}}` are Railway reference variables that wire services together — single-quote them so the shell passes them through literally. `PORT` is injected by Railway and the web `entrypoint.sh` auto-derives `DNS_RESOLVER` from the container's resolver, so neither needs setting.
 
-| Service | Variable | Value |
-|---|---|---|
-| `<app>-server` | `DB_URL` | `${{Postgres.DATABASE_URL}}` (append `?sslmode=disable` if the driver needs it) |
-| `<app>-web` | `BACKEND_URL` | `http://${{<app>-server.RAILWAY_PRIVATE_DOMAIN}}:8080` |
-
-`PORT` is injected by Railway, and the web `entrypoint.sh` auto-derives `DNS_RESOLVER` from the container's resolver — neither needs to be set. Expose the web service publicly with `railway domain` (run inside `services/<app>-web`).
-
-To auto-deploy on push instead of `railway up`, connect each service to the GitHub repo and set its **Root Directory** to the matching `services/<app>-*` path (`railway service source connect --repo <owner>/<repo> --branch main`).
+Notes:
+- **Non-interactive linking:** `railway link` prompts for selections; pass `-p <project> -e production -s <service>` to script it.
+- **CI / no browser:** set `RAILWAY_TOKEN=<project-token>` instead of `railway login` — the only otherwise non-scriptable step.
+- **`railway up` can bootstrap by itself** on a cold run (creates the project + service and deploys; add `-y` to skip prompts). The explicit flow above is preferred because it fixes the service *names*, which the reference variables depend on.
+- **Auto-deploy on push** (instead of `railway up`): connect each service to the GitHub repo with its **Root Directory** set to `services/<app>-*` — `railway service source connect --repo <owner>/<repo> --branch main` from the linked subdir.
