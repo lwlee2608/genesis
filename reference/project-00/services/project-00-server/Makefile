@@ -1,11 +1,13 @@
 GO = $(shell which go 2>/dev/null)
+DOCKER = $(shell which docker 2>/dev/null)
 
 APP             := project-00
 VERSION         ?= $(shell cat VERSION)
 COMMIT_SHA      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 LDFLAGS         := -ldflags "-X main.AppVersion=$(VERSION)-$(COMMIT_SHA)"
+IMAGE           ?= $(APP)
 
-.PHONY: all help build clean run test dep generate
+.PHONY: all help build clean run test dep generate docker
 
 all: clean build
 
@@ -21,6 +23,7 @@ help:
 	@echo "  run         Run the application from source"
 	@echo "  test        Run unit tests"
 	@echo "  generate    Regenerate sqlc code from SQL queries"
+	@echo "  docker      Build Docker image tagged with version and latest"
 
 dep:
 	$(GO) install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
@@ -35,3 +38,5 @@ test:
 	$(GO) test ./...
 generate:
 	sqlc generate
+docker:
+	$(DOCKER) build --build-arg COMMIT_SHA=$(COMMIT_SHA) -t $(IMAGE):$(VERSION) -t $(IMAGE):latest .
