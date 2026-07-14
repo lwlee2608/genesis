@@ -127,6 +127,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 
+		case tea.KeySpace:
+			switch m.state {
+			case inputAddHTTP:
+				m.addHTTP = !m.addHTTP
+			case inputFullStack:
+				m.fullStack = !m.fullStack
+			}
+			return m, nil
+
 		case tea.KeyRunes:
 			switch m.state {
 			case inputAddHTTP:
@@ -136,6 +145,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "n", "N":
 					m.addHTTP = false
 				}
+				return m, nil
 			case inputFullStack:
 				switch string(msg.Runes) {
 				case "y", "Y":
@@ -143,6 +153,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "n", "N":
 					m.fullStack = false
 				}
+				return m, nil
 			}
 		}
 	}
@@ -155,6 +166,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.modInput, cmd = m.modInput.Update(msg)
 	}
 	return m, cmd
+}
+
+func yesNoIndicator(v bool) string {
+	if v {
+		return "[ Yes ]  No  "
+	}
+	return "  Yes  [ No ]"
 }
 
 func (m Model) View() string {
@@ -179,39 +197,32 @@ Go module name:
 		)
 
 	case inputAddHTTP:
-		yesNo := "y/N"
-		if m.addHTTP {
-			yesNo = "Y/n"
-		}
 		return fmt.Sprintf(`App name: %s
 Module: %s
 
-Add http scaffolding? [%s]
+Add http scaffolding? %s
 
-(y/n to toggle, Enter to continue, Esc to quit)`,
+(y/n or space to toggle, Enter to continue, Esc to quit)`,
 			m.appInput.Value(),
 			m.modInput.Value(),
-			yesNo,
+			yesNoIndicator(m.addHTTP),
 		)
 
 	case inputFullStack:
-		yesNo := "y/N"
-		if m.fullStack {
-			yesNo = "Y/n"
-		}
 		return fmt.Sprintf(`App name: %s
 Module: %s
 HTTP: %v
 
-Full stack? Nest backend under services/%s-server and scaffold services/%s-web frontend [%s]
+Full stack? Nest backend under services/%s-server and scaffold services/%s-web frontend
+%s
 
-(y/n to toggle, Enter to generate, Esc to quit)`,
+(y/n or space to toggle, Enter to generate, Esc to quit)`,
 			m.appInput.Value(),
 			m.modInput.Value(),
 			m.addHTTP,
 			m.appInput.Value(),
 			m.appInput.Value(),
-			yesNo,
+			yesNoIndicator(m.fullStack),
 		)
 
 	case done:
