@@ -3,7 +3,6 @@ module github.com/lwlee2608/project-00
 go 1.25.7
 
 require (
-	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/joho/godotenv v1.5.1
