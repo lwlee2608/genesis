@@ -48,7 +48,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 6. **Use the standard library and existing deps first.** `golang.org/x/crypto/bcrypt` for passwords, `crypto/rand` for tokens. Add a dependency only when the tier genuinely needs it (JWT, TOTP), and run `go mod tidy`.
 7. **Never log or return secrets.** No password, hash, session token, or reset token in logs or error responses.
 8. **Reset atomically.** Validate/consume the reset token, update the password, and revoke sessions in one transaction. Lock or conditionally consume the token so concurrent requests cannot both succeed.
-9. **Use timezone-aware auth timestamps.** Pair Postgres `TIMESTAMPTZ` with `pgtype.Timestamptz` for session/reset expiry and lifecycle timestamps.
+9. **Use `TIMESTAMPTZ` for every timestamp column.** The genesis `users` table already uses it (`created_at`, `updated_at`), and sqlc maps it to `pgtype.Timestamptz`. Do the same for session/reset expiry and lifecycle columns; never mix in plain `TIMESTAMP`, which drops the offset and breaks expiry checks on a non-UTC database.
 10. **Expiry is not cleanup.** Wire bounded periodic deletion of expired sessions and expired/used reset records, with suitable indexes.
 11. **Validate bcrypt's byte limit.** Reject passwords over 72 bytes with a client-validation error on signup/reset; character-count validators are insufficient.
 12. **Keep notifier configuration usable.** Provide real delivery or explicit disabled recovery. Disabled recovery must not issue tokens or pretend to send mail; normal startup must work independently of log verbosity.
