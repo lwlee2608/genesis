@@ -35,7 +35,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 ## Implementation rules
 
 1. **Read the target project before writing anything.** Its router, config struct, migration numbering, and package layout decide the shape of the new code. Match them; do not impose a layout from this document.
-2. **Extend the existing users table, don't invent a parallel one.** A genesis server already ships `internal/db/migrations/0001_create_users.sql` with `password_hash` and a `user_role` enum. Add columns and new tables (sessions, password resets, SSO identities, MFA secrets) in a new numbered migration.
+2. **Extend the existing users table, don't invent a parallel one.** A genesis server already ships `internal/db/migrations/0001_create_users.sql` with `password_hash` and a `user_role` enum. Add columns and new tables in a new numbered migration. Backfill before enforcing `NOT NULL`; never assume usernames are emails. Resolve missing addresses and normalization collisions explicitly.
 3. **Follow the established layout** for a genesis server:
    - `internal/auth/` — password hashing, session/token issue and verify, provider clients. No gin types in here.
    - `internal/api/http/handler/auth.go` — login, logout, signup, reset endpoints.
@@ -44,9 +44,14 @@ This skill is a guideline, not a copy job. There is no reference implementation 
    - `internal/db/migrations/NNNN_*.sql` — goose `-- +goose Up` / `Down` blocks, both directions.
    - `internal/db/queries/*.sql` — sqlc named queries; run `sqlc generate` after editing.
 4. **Wire everything.** Register handlers and middleware in `SetupRoute`, add any new dependency to the `Services` struct, and construct it in `main.go`. Auth code that compiles but is never mounted looks done and isn't.
-5. **Config goes through the existing mechanism.** Add fields to the config struct in `cmd/<app>/config.go`, defaults to `application.yml`, and every new key to `.env.example` using the `.` → `_` upper-case form (`auth.session_ttl` → `AUTH_SESSION_TTL`). Never read `os.Getenv` directly.
+5. **Config goes through the existing mechanism.** Add fields to the config struct in `cmd/<app>/config.go`, defaults to `application.yml`, and every new key to `.env.example` using the `.` → `_` upper-case form (`auth.sessionTtl` → `AUTH_SESSIONTTL`). Match the loader's field binding; never read `os.Getenv` directly.
 6. **Use the standard library and existing deps first.** `golang.org/x/crypto/bcrypt` for passwords, `crypto/rand` for tokens. Add a dependency only when the tier genuinely needs it (JWT, TOTP), and run `go mod tidy`.
 7. **Never log or return secrets.** No password, hash, session token, or reset token in logs or error responses.
+8. **Reset atomically.** Validate/consume the reset token, update the password, and revoke sessions in one transaction. Lock or conditionally consume the token so concurrent requests cannot both succeed.
+9. **Use `TIMESTAMPTZ` for every timestamp column.** The genesis `users` table already uses it (`created_at`, `updated_at`), and sqlc maps it to `pgtype.Timestamptz`. Do the same for session/reset expiry and lifecycle columns; never mix in plain `TIMESTAMP`, which drops the offset and breaks expiry checks on a non-UTC database.
+10. **Expiry is not cleanup.** Wire bounded periodic deletion of expired sessions and expired/used reset records, with suitable indexes.
+11. **Validate bcrypt's byte limit.** Reject passwords over 72 bytes with a client-validation error on signup/reset; character-count validators are insufficient.
+12. **Keep notifier configuration usable.** Provide real delivery or explicit disabled recovery. Disabled recovery must not issue tokens or pretend to send mail; normal startup must work independently of log verbosity.
 
 ## Verification procedure
 
@@ -56,6 +61,8 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 4. Every new config key the code reads appears in `.env.example` and `application.yml`.
 5. For cookie sessions: the cookie is set with `HttpOnly`, `Secure`, and `SameSite`.
 6. Session tokens are stored hashed, with an expiry column, and logout deletes the row.
+7. Verify migrations on fresh and populated databases, including usable normalized emails; check auth expiry with a non-UTC database timezone.
+8. Verify reset rollback/single-use behavior against Postgres, cleanup, multibyte password rejection, and non-debug startup. A passing build or `[no test files]` is not behavioral verification.
 
 ## Common mistakes to watch for
 
