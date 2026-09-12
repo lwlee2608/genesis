@@ -36,7 +36,7 @@ Railway project: <app>
 
 5. **Use the Railway Postgres template.** It ships with a volume, the Database tab, backups, and `DATABASE_URL` / `PG*` variables. Only if a migration runs `CREATE EXTENSION postgis` fall back to a `postgis/postgis` image service (see PostGIS exception) — the template image lacks it.
 
-6. **Resolve the project ID first.** If the repo root is linked, read `~/.railway/config.json` (`.projects["<abs repo path>"].project`). Otherwise `list-projects`, or `railway init --name <app>` from the repo root.
+6. **Resolve the project and environment IDs first.** If the repo root is linked, read `~/.railway/config.json` (`.projects["<abs repo path>"].project`). Otherwise `list-projects`, or `railway init --name <app>` from the repo root. Resolve the target environment with `list-services`; use explicit project, environment, and service IDs for configuration and verification.
 
 ## Steps
 
@@ -44,10 +44,11 @@ Railway project: <app>
 2. **Variables** via `set-variables` with `skipDeploys: true`:
    - Server: `PORT=8080`, `HTTP_PORT=${{PORT}}` (both — the server reads `HTTP_PORT`; without it the healthcheck probes the wrong port), `DB_URL=${{Postgres.DATABASE_URL}}?sslmode=disable`, `LOG_LEVEL=info`, plus anything found in rule 4 (generate secrets, report them to the user).
    - Web: `BACKEND_URL=http://${{<app>-server.RAILWAY_PRIVATE_DOMAIN}}:8080`
-3. **Settings** via `update-service` on server and web: `rootDirectory: services/<app>-{server,web}`, `dockerfilePath: Dockerfile`, `watchPatterns: ["services/<app>-{server,web}/**"]` (repo-root relative; a stale pattern matches nothing, so auto-deploy silently never fires), `restartPolicyType: ON_FAILURE`, `restartPolicyMaxRetries: 1`; server also `healthcheckPath: /health`.
-4. **Source** — `connect-service-source` on server, then web, with `repo: <owner>/<repo>`, `branch: main`. This attaches GitHub auto-deploy and starts the first build, so do it after steps 2–3.
-5. **Domain** — `generate-domain` on web.
-6. **Link subdirs** so the CLI works from inside them (absolute paths for `cd`):
+3. **Settings** via `update-service` on server and web: `rootDirectory: services/<app>-{server,web}`, `dockerfilePath: Dockerfile`, `watchPatterns: ["services/<app>-{server,web}/**"]` (repo-root relative), `restartPolicyType: ON_FAILURE`, `restartPolicyMaxRetries: 1`. Server also: `healthcheckPath: /health`, `healthcheckTimeout: 60` (startup only; justify any increase).
+4. **Read back** both services' live `config` via `get-service-config`; confirm step 3 and server `PORT=HTTP_PORT=8080` via `list-variables`. If values are hidden, use `railway variables --json --project <project-id> --environment <environment-id> --service <server-id>` without exposing secrets. Fix and recheck mismatches; stop if unverifiable.
+5. **Source** — after steps 2–4, `connect-service-source` on server, then web: `repo: <owner>/<repo>`, `branch: main`. This starts builds and GitHub auto-deploy. Record triggered deployment IDs from the response or scoped `list-deployments`, matching source and trigger time; report ambiguity rather than guess.
+6. **Domain** — `generate-domain` on web.
+7. **Link subdirs** so the CLI works from inside them (absolute paths for `cd`):
    ```sh
    cd <abs>/services/<app>-server && railway link -p <app> -e production -s <app>-server
    cd <abs>/services/<app>-web    && railway link -p <app> -e production -s <app>-web
@@ -68,9 +69,9 @@ Replaces step 1's Postgres and adds what the template would have provided:
 
 ## Verification procedure
 
-1. `get-status` until every service reports `SUCCESS`.
-2. `curl https://<web domain>/health` returns the server's health response through the nginx proxy.
-3. If proxied paths 500, check `BACKEND_URL` from a linked subdir with `railway variables --json` (MCP `list-variables` redacts references). If it renders as `http://:8080`, web built before server existed — `redeploy` web.
+1. Poll scoped `list-deployments` for each recorded ID until `SUCCESS`; never substitute another deployment. On `FAILED`/`CRASHED`, fetch its `get-logs` with `types: ["build", "deploy"]` and report the cause. If blocked or polling stops, report the ID, state, and next action as unverified. Check Postgres with `environment-status`.
+2. `curl --fail --max-time 10 https://<web domain>/health` must return the expected backend health response; HTTP errors or unexpected bodies fail verification.
+3. For proxy failures, inspect resolved `BACKEND_URL` via MCP or scoped CLI. If `http://:8080`, `redeploy` web and repeat verification with the new deployment ID.
 
 ## Common mistakes to watch for
 
