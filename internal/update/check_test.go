@@ -60,6 +60,17 @@ func TestCheck_SkipsDev(t *testing.T) {
 	}
 }
 
+func TestNotice_UpdateAvailable(t *testing.T) {
+	ch := make(chan string, 1)
+	ch <- "v0.4.0"
+	close(ch)
+
+	want := "Update available: v0.3.2 → v0.4.0\n  curl -fsSL https://raw.githubusercontent.com/lwlee2608/genesis/main/scripts/install.sh | bash"
+	if got := Notice("v0.3.2", ch); got != want {
+		t.Errorf("Notice() = %q, want %q", got, want)
+	}
+}
+
 func TestNotice_Empty(t *testing.T) {
 	ch := make(chan string)
 	if got := Notice("v0.3.2", ch); got != "" {

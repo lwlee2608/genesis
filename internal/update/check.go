@@ -38,7 +38,7 @@ func Notice(current string, ch <-chan string) string {
 	select {
 	case latest, ok := <-ch:
 		if ok {
-			return fmt.Sprintf("Update available: %s → %s\n  go install github.com/lwlee2608/go-bootstrap/cmd/genesis@%s", current, latest, latest)
+			return fmt.Sprintf("Update available: %s → %s\n  curl -fsSL https://raw.githubusercontent.com/lwlee2608/genesis/main/scripts/install.sh | bash", current, latest)
 		}
 	default:
 	}
