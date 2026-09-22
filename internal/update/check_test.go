@@ -81,7 +81,8 @@ func TestCheck_NoticeFromFreshCache(t *testing.T) {
 	notice, wait := Check("v0.3.2")
 	wait()
 
-	want := "Update available: v0.3.2 → v0.4.0\n  curl -fsSL https://raw.githubusercontent.com/lwlee2608/genesis/main/scripts/install.sh | bash"
+	want := noticeStyle.Render("Update available: v0.3.2 → v0.4.0") +
+		"\n  curl -fsSL https://raw.githubusercontent.com/lwlee2608/genesis/main/scripts/install.sh | bash"
 	if notice != want {
 		t.Errorf("Check() = %q, want %q", notice, want)
 	}

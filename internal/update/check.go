@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 const (
@@ -23,7 +25,10 @@ type entry struct {
 	CheckedAt int64  `json:"checked_at"`
 }
 
-var cachePath = defaultCachePath
+var (
+	cachePath   = defaultCachePath
+	noticeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("220"))
+)
 
 func Check(current string) (string, func()) {
 	noop := func() {}
@@ -34,7 +39,8 @@ func Check(current string) (string, func()) {
 	cached := load()
 	notice := ""
 	if newer(cached.Latest, current) {
-		notice = fmt.Sprintf("Update available: %s → %s\n  curl -fsSL https://raw.githubusercontent.com/lwlee2608/genesis/main/scripts/install.sh | bash", current, cached.Latest)
+		notice = noticeStyle.Render(fmt.Sprintf("Update available: %s → %s", current, cached.Latest)) +
+			"\n  curl -fsSL https://raw.githubusercontent.com/lwlee2608/genesis/main/scripts/install.sh | bash"
 	}
 	if time.Since(time.Unix(cached.CheckedAt, 0)) < ttl {
 		return notice, noop
