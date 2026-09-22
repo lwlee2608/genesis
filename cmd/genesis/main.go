@@ -12,6 +12,7 @@ import (
 	"github.com/lwlee2608/go-bootstrap/internal/readme"
 	"github.com/lwlee2608/go-bootstrap/internal/scaffold"
 	"github.com/lwlee2608/go-bootstrap/internal/tui"
+	"github.com/lwlee2608/go-bootstrap/internal/update"
 )
 
 var AppVersion = "dev"
@@ -20,9 +21,19 @@ func main() {
 	version := flag.Bool("version", false, "print version")
 	flag.Parse()
 
+	notice, waitForUpdateCheck := update.Check(AppVersion)
+	defer waitForUpdateCheck()
+
 	if *version {
 		fmt.Printf("genesis %s\n", AppVersion)
-		os.Exit(0)
+		if notice != "" {
+			fmt.Println("\n" + notice)
+		}
+		return
+	}
+
+	if notice != "" {
+		fmt.Println(notice + "\n")
 	}
 
 	outputDir := "."
