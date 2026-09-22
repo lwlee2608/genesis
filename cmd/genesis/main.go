@@ -12,6 +12,7 @@ import (
 	"github.com/lwlee2608/go-bootstrap/internal/readme"
 	"github.com/lwlee2608/go-bootstrap/internal/scaffold"
 	"github.com/lwlee2608/go-bootstrap/internal/tui"
+	"github.com/lwlee2608/go-bootstrap/internal/update"
 )
 
 var AppVersion = "dev"
@@ -25,6 +26,7 @@ func main() {
 		os.Exit(0)
 	}
 
+	updateCh := update.Check(AppVersion)
 	outputDir := "."
 
 	suggestedApp := git.DetectAppName()
@@ -84,5 +86,8 @@ func main() {
 	} else {
 		fmt.Println("  make build")
 		fmt.Printf("  ./bin/%s\n", result.AppName)
+	}
+	if notice := update.Notice(AppVersion, updateCh); notice != "" {
+		fmt.Println("\n" + notice)
 	}
 }
