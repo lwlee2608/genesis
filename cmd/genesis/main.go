@@ -21,12 +21,21 @@ func main() {
 	version := flag.Bool("version", false, "print version")
 	flag.Parse()
 
+	notice, waitForUpdateCheck := update.Check(AppVersion)
+	defer waitForUpdateCheck()
+
 	if *version {
 		fmt.Printf("genesis %s\n", AppVersion)
-		os.Exit(0)
+		if notice != "" {
+			fmt.Println("\n" + notice)
+		}
+		return
 	}
 
-	updateCh := update.Check(AppVersion)
+	if notice != "" {
+		fmt.Println(notice + "\n")
+	}
+
 	outputDir := "."
 
 	suggestedApp := git.DetectAppName()
@@ -86,8 +95,5 @@ func main() {
 	} else {
 		fmt.Println("  make build")
 		fmt.Printf("  ./bin/%s\n", result.AppName)
-	}
-	if notice := update.Notice(AppVersion, updateCh); notice != "" {
-		fmt.Println("\n" + notice)
 	}
 }

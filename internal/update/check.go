@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -14,35 +15,86 @@ import (
 const (
 	releaseURL = "https://api.github.com/repos/lwlee2608/genesis/releases/latest"
 	timeout    = 2 * time.Second
+	ttl        = 24 * time.Hour
 )
 
-func Check(current string) <-chan string {
-	ch := make(chan string, 1)
+type entry struct {
+	Latest    string `json:"latest"`
+	CheckedAt int64  `json:"checked_at"`
+}
+
+var cachePath = defaultCachePath
+
+func Check(current string) (string, func()) {
+	noop := func() {}
 	if current == "dev" || os.Getenv("GENESIS_NO_UPDATE_CHECK") != "" {
-		close(ch)
-		return ch
+		return "", noop
 	}
+
+	cached := load()
+	notice := ""
+	if newer(cached.Latest, current) {
+		notice = fmt.Sprintf("Update available: %s → %s\n  curl -fsSL https://raw.githubusercontent.com/lwlee2608/genesis/main/scripts/install.sh | bash", current, cached.Latest)
+	}
+	if time.Since(time.Unix(cached.CheckedAt, 0)) < ttl {
+		return notice, noop
+	}
+
+	done := make(chan struct{})
 	go func() {
-		defer close(ch)
+		defer close(done)
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		latest, err := fetchLatest(ctx, releaseURL)
-		if err == nil && newer(latest, current) {
-			ch <- latest
+		if err != nil {
+			return
 		}
+		store(entry{Latest: latest, CheckedAt: time.Now().Unix()})
 	}()
-	return ch
+
+	return notice, func() {
+		select {
+		case <-done:
+		case <-time.After(timeout):
+		}
+	}
 }
 
-func Notice(current string, ch <-chan string) string {
-	select {
-	case latest, ok := <-ch:
-		if ok {
-			return fmt.Sprintf("Update available: %s → %s\n  curl -fsSL https://raw.githubusercontent.com/lwlee2608/genesis/main/scripts/install.sh | bash", current, latest)
-		}
-	default:
+func defaultCachePath() string {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return ""
 	}
-	return ""
+	return filepath.Join(dir, "genesis", "update.json")
+}
+
+func load() entry {
+	var e entry
+	path := cachePath()
+	if path == "" {
+		return e
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return e
+	}
+	json.Unmarshal(data, &e)
+	return e
+}
+
+func store(e entry) {
+	path := cachePath()
+	if path == "" {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return
+	}
+	data, err := json.Marshal(e)
+	if err != nil {
+		return
+	}
+	os.WriteFile(path, data, 0o644)
 }
 
 func fetchLatest(ctx context.Context, url string) (string, error) {

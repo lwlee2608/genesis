@@ -4,8 +4,19 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
+	"time"
 )
+
+func tempCache(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "update.json")
+	old := cachePath
+	cachePath = func() string { return path }
+	t.Cleanup(func() { cachePath = old })
+	return path
+}
 
 func TestNewer(t *testing.T) {
 	tests := []struct {
@@ -55,25 +66,61 @@ func TestFetchLatest_NonOK(t *testing.T) {
 }
 
 func TestCheck_SkipsDev(t *testing.T) {
-	if _, ok := <-Check("dev"); ok {
-		t.Error("expected closed channel for dev build")
+	tempCache(t)
+	notice, wait := Check("dev")
+	wait()
+	if notice != "" {
+		t.Errorf("Check(dev) = %q, want empty", notice)
 	}
 }
 
-func TestNotice_UpdateAvailable(t *testing.T) {
-	ch := make(chan string, 1)
-	ch <- "v0.4.0"
-	close(ch)
+func TestCheck_NoticeFromFreshCache(t *testing.T) {
+	tempCache(t)
+	store(entry{Latest: "v0.4.0", CheckedAt: time.Now().Unix()})
+
+	notice, wait := Check("v0.3.2")
+	wait()
 
 	want := "Update available: v0.3.2 → v0.4.0\n  curl -fsSL https://raw.githubusercontent.com/lwlee2608/genesis/main/scripts/install.sh | bash"
-	if got := Notice("v0.3.2", ch); got != want {
-		t.Errorf("Notice() = %q, want %q", got, want)
+	if notice != want {
+		t.Errorf("Check() = %q, want %q", notice, want)
 	}
 }
 
-func TestNotice_Empty(t *testing.T) {
-	ch := make(chan string)
-	if got := Notice("v0.3.2", ch); got != "" {
-		t.Errorf("Notice() = %q, want empty when no result ready", got)
+func TestCheck_NoNoticeWhenCurrent(t *testing.T) {
+	tempCache(t)
+	store(entry{Latest: "v0.3.2", CheckedAt: time.Now().Unix()})
+
+	notice, wait := Check("v0.3.2")
+	wait()
+	if notice != "" {
+		t.Errorf("Check() = %q, want empty when up to date", notice)
+	}
+}
+
+func TestCheck_SkipsWhenDisabled(t *testing.T) {
+	tempCache(t)
+	t.Setenv("GENESIS_NO_UPDATE_CHECK", "1")
+
+	notice, wait := Check("v0.3.2")
+	wait()
+	if notice != "" {
+		t.Errorf("Check() = %q, want empty when disabled", notice)
+	}
+}
+
+func TestCacheRoundTrip(t *testing.T) {
+	tempCache(t)
+	want := entry{Latest: "v1.2.3", CheckedAt: 1700000000}
+	store(want)
+	if got := load(); got != want {
+		t.Errorf("load() = %+v, want %+v", got, want)
+	}
+}
+
+func TestLoad_MissingFile(t *testing.T) {
+	tempCache(t)
+	if got := load(); got != (entry{}) {
+		t.Errorf("load() = %+v, want zero entry", got)
 	}
 }
