@@ -33,7 +33,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
    `basic` is browser-only with no SSO: when the arguments already say `basic`, skip Clients and SSO; if the user picks `basic` in the same call, ignore those answers. If the arguments combine `basic` with a provider, flag the conflict in the confirmation.
 3. **Derive the mechanism — do not ask about it:**
    - browser only → cookie (HttpOnly, Secure, SameSite=Lax) + server-side session token in Postgres
-   - mobile/API consumers → same cookie flow for the web, plus a token path (JWT access + refresh, or API keys for machine consumers)
+   - mobile/API consumers → same cookie flow for the web, plus opaque bearer tokens from the same sessions table for mobile, and API keys for machine consumers. Not JWT: it cannot be revoked on logout, reset, or role change.
 4. **Confirm with the derived plan in prose, not more pickers.** Example: "basic tier: seeded admin, cookie sessions in Postgres, no SSO, server only (no web login UI) — proceed?" If the user overrides a mechanism (e.g. "actually JWT") or asks for the web UI, honor it.
 
 ## Implementation rules
@@ -49,7 +49,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
    - `internal/db/queries/*.sql` — sqlc named queries; run `sqlc generate` after editing.
 4. **Wire everything.** Register handlers and middleware in `SetupRoute`, add any new dependency to the `Services` struct, and construct it in `main.go`. Auth code that compiles but is never mounted looks done and isn't.
 5. **Config goes through the existing mechanism.** Define `auth.Config` in `internal/auth` and compose it into the struct in `cmd/<app>/config.go`, like `db.Config`. Put non-secret defaults in `application.yml` and every key in `.env.example` using the `.` → `_` upper-case form (`auth.sessionTtl` → `AUTH_SESSIONTTL`). Keep secrets (seed password, client secrets, SMTP password, keys) out of `application.yml` and tag them `mask:"true"`: the loader dumps the whole config at debug, the default level. Match the loader's field binding (see the `adder` skill); never read `os.Getenv` directly.
-6. **Use the standard library and existing deps first.** `golang.org/x/crypto/bcrypt` for passwords, `crypto/rand` for tokens. Add a dependency only when the tier genuinely needs it (JWT, TOTP), and run `go mod tidy`.
+6. **Use the standard library and existing deps first.** `golang.org/x/crypto/bcrypt` for passwords, `crypto/rand` for tokens. Add a dependency only when the tier genuinely needs it (OIDC, TOTP), and run `go mod tidy`.
 7. **Never log or return secrets.** No password, hash, session token, or reset token in logs or error responses.
 8. **Reset atomically.** Validate/consume the reset token, update the password, and revoke sessions in one transaction. Lock or conditionally consume the token so concurrent requests cannot both succeed.
 9. **Use `TIMESTAMPTZ` for every timestamp column.** The genesis `users` table already uses it (`created_at`, `updated_at`), and sqlc maps it to `pgtype.Timestamptz`. Do the same for session/reset expiry and lifecycle columns; never mix in plain `TIMESTAMP`, which drops the offset and breaks expiry checks on a non-UTC database.
