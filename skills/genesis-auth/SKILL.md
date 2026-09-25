@@ -28,11 +28,13 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 2. **Ask remaining questions in ONE AskUserQuestion call**, with the recommended option first and marked "(Recommended)":
    - Tier: `basic` | `standard (Recommended)` | `strict`
    - Clients: `browser only (Recommended)` | `also mobile/API consumers`
-   - SSO providers (multiSelect): `google` | `apple` — an empty selection means no SSO. Omit this question only when the tier is already known to be `basic`; if the tier is asked in the same call and the user picks `basic`, ignore the SSO answer.
+   - SSO providers (multiSelect): `google` | `apple` — an empty selection means no SSO.
+
+   `basic` is browser-only with no SSO: when the arguments already say `basic`, skip Clients and SSO; if the user picks `basic` in the same call, ignore those answers. If the arguments combine `basic` with a provider, flag the conflict in the confirmation.
 3. **Derive the mechanism — do not ask about it:**
    - browser only → cookie (HttpOnly, Secure, SameSite=Lax) + server-side session token in Postgres
    - mobile/API consumers → same cookie flow for the web, plus a token path (JWT access + refresh, or API keys for machine consumers)
-4. **Confirm with the derived plan in prose, not more pickers.** Example: "basic tier: seeded admin, cookie sessions in Postgres, no SSO — proceed?" If the user overrides a mechanism (e.g. "actually JWT"), honor it.
+4. **Confirm with the derived plan in prose, not more pickers.** Example: "basic tier: seeded admin, cookie sessions in Postgres, no SSO, server only (no web login UI) — proceed?" If the user overrides a mechanism (e.g. "actually JWT") or asks for the web UI, honor it.
 
 ## Implementation rules
 
