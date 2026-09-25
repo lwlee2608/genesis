@@ -32,7 +32,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 
    `basic` is browser-only with no SSO: when the arguments already say `basic`, skip Clients and SSO; if the user picks `basic` in the same call, ignore those answers. If the arguments combine `basic` with a provider, flag the conflict in the confirmation.
 3. **Derive the mechanism — do not ask about it:**
-   - browser only → cookie (HttpOnly, Secure, SameSite=Lax) + server-side session token in Postgres
+   - browser only → cookie (HttpOnly, Secure, SameSite=Lax) + server-side session token in Postgres. The web app reaches the API same-origin via the Vite proxy / nginx, so add no CORS. Lax still sends cookies on cross-site GETs: keep state changes off GET, and reject cookie-authenticated mutations with a foreign `Origin`.
    - mobile/API consumers → same cookie flow for the web, plus opaque bearer tokens from the same sessions table for mobile, and API keys for machine consumers. Not JWT: it cannot be revoked on logout, reset, or role change.
 4. **Confirm with the derived plan in prose, not more pickers.** Example: "basic tier: seeded admin, cookie sessions in Postgres, no SSO, server only (no web login UI) — proceed?" If the user overrides a mechanism (e.g. "actually JWT") or asks for the web UI, honor it.
 
