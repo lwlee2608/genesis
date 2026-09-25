@@ -39,7 +39,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 ## Implementation rules
 
 1. **Read the target project before writing anything.** Its router, config struct, migration numbering, and package layout decide the shape of the new code. Match them; do not impose a layout from this document.
-2. **Extend the existing users table, don't invent a parallel one.** A genesis server already ships `internal/db/migrations/0001_create_users.sql` with `password_hash` and a `user_role` enum. Add columns and new tables in a new numbered migration. Backfill before enforcing `NOT NULL`; never assume usernames are emails. Resolve missing addresses and normalization collisions explicitly.
+2. **Extend the existing users table, don't invent a parallel one.** A genesis server already ships `internal/db/migrations/0001_create_users.sql` with a unique `username`, `password_hash`, and a `user_role` enum. Add columns and new tables in a new numbered migration. For `standard`+, add a unique `email` stored lowercased, log in by email, and set `username` to that email on signup. On a populated table, never assume usernames are emails: backfill before enforcing `NOT NULL`, and surface missing addresses and case collisions to the user instead of guessing.
 3. **Follow the established layout** for a genesis server:
    - `internal/auth/` — password hashing, session/token issue and verify, provider clients. No gin types in here.
    - `internal/api/http/handler/auth.go` — login, logout, signup, reset endpoints.
