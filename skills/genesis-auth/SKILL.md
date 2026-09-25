@@ -67,8 +67,8 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 4. Every new config key appears in `.env.example`, non-secret ones also in `application.yml`, and secret fields carry `mask:"true"`.
 5. For cookie sessions: the cookie is set with `HttpOnly`, `Secure`, and `SameSite`.
 6. Session tokens are stored hashed, with an expiry column, and logout deletes the row.
-7. Verify migrations on fresh and populated databases, including usable normalized emails; check auth expiry with a non-UTC database timezone.
-8. Verify reset rollback/single-use behavior against Postgres, cleanup, multibyte password rejection, and non-debug startup. A passing build or `[no test files]` is not behavioral verification.
+7. Run it — a passing build or `[no test files]` is not verification. Start the project's docker-compose Postgres, run the server with `LOG_LEVEL=info`, and curl the flows: login, logout, a protected route, a role check. Migrate both a fresh database and one with existing users (they can still log in), and recheck expiry after `ALTER DATABASE ... SET timezone = 'Asia/Singapore'`.
+8. `standard`+: of two concurrent resets with one token, exactly one succeeds; a failed reset rolls back; 40 × `é` (80 bytes) is rejected with a 4xx; expired rows get cleaned up.
 
 ## Common mistakes to watch for
 
