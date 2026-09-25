@@ -48,7 +48,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
    - `internal/db/migrations/NNNN_*.sql` — goose `-- +goose Up` / `Down` blocks, both directions.
    - `internal/db/queries/*.sql` — sqlc named queries; run `sqlc generate` after editing.
 4. **Wire everything.** Register handlers and middleware in `SetupRoute`, add any new dependency to the `Services` struct, and construct it in `main.go`. Auth code that compiles but is never mounted looks done and isn't.
-5. **Config goes through the existing mechanism.** Add fields to the config struct in `cmd/<app>/config.go`, defaults to `application.yml`, and every new key to `.env.example` using the `.` → `_` upper-case form (`auth.sessionTtl` → `AUTH_SESSIONTTL`). Match the loader's field binding; never read `os.Getenv` directly.
+5. **Config goes through the existing mechanism.** Define `auth.Config` in `internal/auth` and compose it into the struct in `cmd/<app>/config.go`, like `db.Config`. Put non-secret defaults in `application.yml` and every key in `.env.example` using the `.` → `_` upper-case form (`auth.sessionTtl` → `AUTH_SESSIONTTL`). Keep secrets (seed password, client secrets, SMTP password, keys) out of `application.yml` and tag them `mask:"true"`: the loader dumps the whole config at debug, the default level. Match the loader's field binding (see the `adder` skill); never read `os.Getenv` directly.
 6. **Use the standard library and existing deps first.** `golang.org/x/crypto/bcrypt` for passwords, `crypto/rand` for tokens. Add a dependency only when the tier genuinely needs it (JWT, TOTP), and run `go mod tidy`.
 7. **Never log or return secrets.** No password, hash, session token, or reset token in logs or error responses.
 8. **Reset atomically.** Validate/consume the reset token, update the password, and revoke sessions in one transaction. Lock or conditionally consume the token so concurrent requests cannot both succeed.
@@ -62,7 +62,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 1. `make build` passes in the target server.
 2. `sqlc generate` is clean and the generated code is committed.
 3. A migration file exists — up *and* down — for every new table or column the code queries.
-4. Every new config key the code reads appears in `.env.example` and `application.yml`.
+4. Every new config key appears in `.env.example`, non-secret ones also in `application.yml`, and secret fields carry `mask:"true"`.
 5. For cookie sessions: the cookie is set with `HttpOnly`, `Secure`, and `SameSite`.
 6. Session tokens are stored hashed, with an expiry column, and logout deletes the row.
 7. Verify migrations on fresh and populated databases, including usable normalized emails; check auth expiry with a non-UTC database timezone.
