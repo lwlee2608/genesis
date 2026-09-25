@@ -12,6 +12,8 @@ Adds authentication to a genesis project. The user picks a tier and states requi
 
 This skill is a guideline, not a copy job. There is no reference implementation to clone: read the target project's existing code and write auth that matches it.
 
+**Prerequisite:** the server needs the genesis DB layer — `internal/db` with goose migrations, sqlc, and the `users` table. The genesis CLI does not generate it. If it is missing, stop and tell the user to add it first with `/genesis sqlc`.
+
 ## Tiers
 
 | Tier | Use case | Includes |
