@@ -73,9 +73,6 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 
 ## Common mistakes to watch for
 
-- **Asking mechanism questions.** Never ask "JWT or cookie?" — derive it from the Clients answer.
 - **Re-asking what arguments already answered.** `/genesis-auth basic` should ask nothing except the final confirmation.
-- **Copying without wiring.** Routes and middleware that are never mounted on the router.
-- **A second users table.** Extend the one the project already has.
 - **Migrations without a `Down` block**, or editing an already-applied migration instead of adding a new one.
 - **Hand-editing `internal/db/sqlc/`.** It is generated; change the `.sql` query and regenerate.
