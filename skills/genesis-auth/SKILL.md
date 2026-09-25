@@ -20,7 +20,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 |---|---|---|
 | `basic` | Internal tools | Single admin seeded from env var, password login, cookie session in Postgres. No signup, no email. |
 | `standard` | Normal apps | Email+password users with email verification, optional Google/Apple SSO, sessions in Postgres, password reset, admin/user roles. |
-| `strict` | Sensitive data | `standard` + TOTP MFA, rate limiting + lockout, session rotation on privilege change, audit log. Beyond this, recommend an external IdP (Keycloak, Auth0, WorkOS) instead of more homegrown code. |
+| `strict` | Sensitive data | `standard` + TOTP MFA, rate limiting + temporary lockout, session rotation on privilege change, audit log. Beyond this, recommend an external IdP (Keycloak, Auth0, WorkOS) instead of more homegrown code. |
 
 ## Question flow
 
@@ -58,6 +58,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 12. **Send email through a `Mailer` interface** in `internal/auth` with an SMTP implementation. When SMTP is not configured, reset and verification requests return 503 and write no token rows; never log the link as stand-in delivery. Startup must not depend on the log level.
 13. **SSO.** Use `golang.org/x/oauth2` + `github.com/coreos/go-oidc/v3`; check `state`, PKCE, and `nonce`, and verify the ID token. Key identities by `(provider, subject)` in their own table, never by email, and make `password_hash` nullable for SSO-only users. Link to an existing user only when both sides' emails are verified — otherwise an attacker who pre-registers the victim's email keeps access. Apple posts the callback cross-site (`form_post`), so its state cookie needs `SameSite=None; Secure`; its client secret is an ES256 JWT valid at most 6 months, so mint it at runtime from the `.p8` key; it sends the user's name only on first sign-in.
 14. **Seed the first admin from config, in every tier.** Create it only when no `Admin` user exists and never overwrite one; if none exists and the seed password is empty, fail startup with a clear error. Signup always creates `User`; never accept `role` from the request.
+15. **Strict extras.** Keep rate-limit and lockout state in Postgres (in-memory breaks with replicas), and set gin's trusted proxies to the real proxy chain — by default gin trusts all, so `ClientIP()` reads a spoofable `X-Forwarded-For`. Lockouts expire and back off; a permanent one lets anyone lock out the admin. Encrypt TOTP secrets at rest, reject reused codes, and hash recovery codes.
 
 ## Verification procedure
 
