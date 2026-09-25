@@ -57,6 +57,7 @@ This skill is a guideline, not a copy job. There is no reference implementation 
 11. **Validate bcrypt's byte limit.** Reject passwords over 72 bytes with a client-validation error on signup/reset; character-count validators are insufficient.
 12. **Keep notifier configuration usable.** Provide real delivery or explicit disabled recovery. Disabled recovery must not issue tokens or pretend to send mail; normal startup must work independently of log verbosity.
 13. **SSO.** Use `golang.org/x/oauth2` + `github.com/coreos/go-oidc/v3`; check `state`, PKCE, and `nonce`, and verify the ID token. Key identities by `(provider, subject)` in their own table, never by email, and make `password_hash` nullable for SSO-only users. Link to an existing user only when both sides' emails are verified — otherwise an attacker who pre-registers the victim's email keeps access. Apple posts the callback cross-site (`form_post`), so its state cookie needs `SameSite=None; Secure`; its client secret is an ES256 JWT valid at most 6 months, so mint it at runtime from the `.p8` key; it sends the user's name only on first sign-in.
+14. **Seed the first admin from config, in every tier.** Create it only when no `Admin` user exists and never overwrite one; if none exists and the seed password is empty, fail startup with a clear error. Signup always creates `User`; never accept `role` from the request.
 
 ## Verification procedure
 
