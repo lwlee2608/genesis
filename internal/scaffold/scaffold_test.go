@@ -1,8 +1,11 @@
 package scaffold
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -62,6 +65,120 @@ func TestGenerate(t *testing.T) {
 	}
 	if !strings.Contains(string(gitignore), "bin/") {
 		t.Error(".gitignore does not contain bin/")
+	}
+}
+
+const viteReactPackageJSON = `{
+  "name": "myapp-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.12.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.0.12"
+  }
+}
+`
+
+func TestConfigureFrontendLint(t *testing.T) {
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, []byte(viteReactPackageJSON)); err != nil {
+		t.Fatal(err)
+	}
+	var want map[string]any
+	if err := json.Unmarshal([]byte(viteReactPackageJSON), &want); err != nil {
+		t.Fatal(err)
+	}
+	want["scripts"].(map[string]any)["lint"] = "oxlint"
+	want["devDependencies"] = map[string]any{
+		"@types/node": "^24.12.3", "@vitejs/plugin-react": "^6.0.1",
+		"oxlint": oxlintVersion, "typescript": "~6.0.2", "vite": "^8.0.12",
+	}
+	for name, input := range map[string]string{
+		"pretty":         viteReactPackageJSON,
+		"compact":        compact.String(),
+		"CRLF":           strings.ReplaceAll(viteReactPackageJSON, "\n", "\r\n"),
+		"inline scripts": strings.Replace(viteReactPackageJSON, `"scripts": {`+"\n", `"scripts": { `, 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			webDir := t.TempDir()
+			path := filepath.Join(webDir, "package.json")
+			if err := os.WriteFile(path, []byte(input), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(webDir, "eslint.config.js"), []byte("old config"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			for i := 0; i < 2; i++ {
+				if err := configureFrontendLint(webDir); err != nil {
+					t.Fatal(err)
+				}
+				data, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var got map[string]any
+				if err := json.Unmarshal(data, &got); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(got, want) {
+					t.Fatalf("package.json mismatch:\n%s", data)
+				}
+			}
+			if _, err := os.Stat(filepath.Join(webDir, "eslint.config.js")); !os.IsNotExist(err) {
+				t.Fatal("ESLint config was not removed")
+			}
+			config, err := os.ReadFile(filepath.Join(webDir, ".oxlintrc.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(config) != oxlintConfig {
+				t.Fatal("unexpected Oxlint config")
+			}
+		})
+	}
+}
+
+func TestFrontendLintMatchesReference(t *testing.T) {
+	webDir := filepath.Join("..", "..", "reference", "project-00", "services", "project-00-web")
+	config, err := os.ReadFile(filepath.Join(webDir, ".oxlintrc.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(config) != oxlintConfig {
+		t.Fatal("CLI and reference Oxlint configs differ")
+	}
+	data, err := os.ReadFile(filepath.Join(webDir, "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pkg struct {
+		Scripts         map[string]string
+		DevDependencies map[string]string
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		t.Fatal(err)
+	}
+	if pkg.Scripts["lint"] != "oxlint" || pkg.DevDependencies["oxlint"] != oxlintVersion {
+		t.Fatal("CLI and reference Oxlint script or version differ")
 	}
 }
 
