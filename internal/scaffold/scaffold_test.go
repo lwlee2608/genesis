@@ -1,9 +1,11 @@
 package scaffold
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -66,26 +68,60 @@ func TestGenerate(t *testing.T) {
 	}
 }
 
+const viteReactPackageJSON = `{
+  "name": "myapp-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.12.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.0.12"
+  }
+}
+`
+
 func TestConfigureFrontendLint(t *testing.T) {
-	for _, linter := range []string{"eslint", "oxlint"} {
-		t.Run(linter, func(t *testing.T) {
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, []byte(viteReactPackageJSON)); err != nil {
+		t.Fatal(err)
+	}
+	var want map[string]any
+	if err := json.Unmarshal([]byte(viteReactPackageJSON), &want); err != nil {
+		t.Fatal(err)
+	}
+	want["scripts"].(map[string]any)["lint"] = "oxlint"
+	want["devDependencies"] = map[string]any{
+		"@types/node": "^24.12.3", "@vitejs/plugin-react": "^6.0.1",
+		"oxlint": oxlintVersion, "typescript": "~6.0.2", "vite": "^8.0.12",
+	}
+	for name, input := range map[string]string{
+		"pretty":         viteReactPackageJSON,
+		"compact":        compact.String(),
+		"CRLF":           strings.ReplaceAll(viteReactPackageJSON, "\n", "\r\n"),
+		"inline scripts": strings.Replace(viteReactPackageJSON, `"scripts": {`+"\n", `"scripts": { `, 1),
+	} {
+		t.Run(name, func(t *testing.T) {
 			webDir := t.TempDir()
-			pkg := map[string]any{
-				"name":         "myapp-web",
-				"private":      true,
-				"scripts":      map[string]string{"dev": "vite", "lint": linter},
-				"dependencies": map[string]string{"react": "^19.2.6"},
-				"devDependencies": map[string]string{
-					"vite": "^8.0.12", linter: "old",
-					"@eslint/js": "old", "eslint-plugin-react-hooks": "old",
-					"eslint-plugin-react-refresh": "old", "globals": "old", "typescript-eslint": "old",
-				},
-			}
-			data, err := json.Marshal(pkg)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(filepath.Join(webDir, "package.json"), data, 0644); err != nil {
+			path := filepath.Join(webDir, "package.json")
+			if err := os.WriteFile(path, []byte(input), 0644); err != nil {
 				t.Fatal(err)
 			}
 			if err := os.WriteFile(filepath.Join(webDir, "eslint.config.js"), []byte("old config"), 0644); err != nil {
@@ -95,26 +131,17 @@ func TestConfigureFrontendLint(t *testing.T) {
 				if err := configureFrontendLint(webDir); err != nil {
 					t.Fatal(err)
 				}
-			}
-			data, err = os.ReadFile(filepath.Join(webDir, "package.json"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			var got struct {
-				Name            string
-				Private         bool
-				Scripts         map[string]string
-				Dependencies    map[string]string
-				DevDependencies map[string]string
-			}
-			if err := json.Unmarshal(data, &got); err != nil {
-				t.Fatal(err)
-			}
-			if got.Name != "myapp-web" || !got.Private || got.Scripts["dev"] != "vite" || got.Dependencies["react"] != "^19.2.6" || got.DevDependencies["vite"] != "^8.0.12" {
-				t.Fatal("unrelated package fields changed")
-			}
-			if got.Scripts["lint"] != "oxlint" || got.DevDependencies["oxlint"] != oxlintVersion || len(got.DevDependencies) != 2 {
-				t.Fatalf("unexpected lint setup: %+v", got)
+				data, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var got map[string]any
+				if err := json.Unmarshal(data, &got); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(got, want) {
+					t.Fatalf("package.json mismatch:\n%s", data)
+				}
 			}
 			if _, err := os.Stat(filepath.Join(webDir, "eslint.config.js")); !os.IsNotExist(err) {
 				t.Fatal("ESLint config was not removed")
