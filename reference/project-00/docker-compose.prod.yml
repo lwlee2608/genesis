@@ -1,7 +1,14 @@
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
 services:
   postgres:
     image: pgvector/pgvector:pg17
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_DB: project_00
       POSTGRES_USER: project_00
@@ -20,6 +27,7 @@ services:
     build:
       context: ./services/project-00-server
     restart: unless-stopped
+    logging: *logging
     environment:
       DB_URL: postgres://project_00:${POSTGRES_PASSWORD}@postgres:5432/project_00?sslmode=disable
       LOG_LEVEL: info
@@ -32,6 +40,7 @@ services:
     build:
       context: ./services/project-00-web
     restart: unless-stopped
+    logging: *logging
     ports:
       - "80:80"
     environment:
