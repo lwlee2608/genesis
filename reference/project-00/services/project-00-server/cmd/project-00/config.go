@@ -1,11 +1,12 @@
 package main
 
 import (
-	"strings"
 	"log/slog"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/lwlee2608/adder"
+
 	"github.com/lwlee2608/project-00/internal/api/http"
 	"github.com/lwlee2608/project-00/internal/db"
 )

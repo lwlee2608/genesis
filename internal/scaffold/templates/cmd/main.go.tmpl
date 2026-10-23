@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+
+	"github.com/gin-gonic/gin"
 
 	internalhttp "{{.ModuleName}}/internal/api/http"
-	"github.com/gin-gonic/gin"
 {{- else }}
 	"fmt"
 {{- end }}
@@ -19,7 +21,7 @@ func main() {
 {{- if .AddHTTP }}
 	if err := InitConfig(); err != nil {
 		slog.Error("Failed to init config", "error", err)
-		return
+		os.Exit(1)
 	}
 
 	slog.Info("{{.AppName}}", "version", AppVersion)
@@ -29,6 +31,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+	engine.SetTrustedProxies(nil)
 	internalhttp.SetupRoute(engine, services)
 
 	server := &http.Server{
@@ -39,6 +42,7 @@ func main() {
 	slog.Info("Starting HTTP server", "address", server.Addr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("HTTP server error", "error", err)
+		os.Exit(1)
 	}
 {{- else }}
 	fmt.Printf("{{.AppName}} %s\n", AppVersion)

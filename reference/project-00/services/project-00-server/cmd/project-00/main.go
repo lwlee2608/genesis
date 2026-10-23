@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+
 	internalhttp "github.com/lwlee2608/project-00/internal/api/http"
 	"github.com/lwlee2608/project-00/internal/db"
 	"github.com/lwlee2608/project-00/internal/db/sqlc"
@@ -18,7 +19,7 @@ var AppVersion = "dev"
 func main() {
 	if err := InitConfig(); err != nil {
 		slog.Error("Failed to init config", "error", err)
-		return
+		os.Exit(1)
 	}
 
 	slog.Info("project-00", "version", AppVersion)
@@ -47,6 +48,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+	engine.SetTrustedProxies(nil)
 	internalhttp.SetupRoute(engine, services)
 
 	server := &http.Server{
@@ -57,5 +59,6 @@ func main() {
 	slog.Info("Starting HTTP server", "address", server.Addr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("HTTP server error", "error", err)
+		os.Exit(1)
 	}
 }
