@@ -15,8 +15,6 @@ Start new repos with the genesis CLI. Add everything else from the `reference/pr
 ```
 reference/project-00/
 ├── docker-compose.yml          # dev stack: Postgres only
-├── docker-compose.prod.yml     # full stack: postgres + server + web
-├── .env.example
 └── services/
     ├── project-00-server/      # Go API
     │   ├── cmd/project-00/     # main, config, logger
@@ -55,4 +53,4 @@ reference/project-00/
 
 4. **Use Oxlint for the web frontend.** Copy `.oxlintrc.json`, the `oxlint` dependency, and the lint script from the reference. Keep the React Hooks and React Refresh rules. Remove the ESLint config and dependencies it replaces, then regenerate the lockfile with pnpm.
 
-For deploying the result to Railway, use `/genesis-railway`.
+For deploying the result to Railway, use `/genesis-railway`. The prod compose for a VM with Overwatcher comes from `/genesis-cicd overwatcher`.
