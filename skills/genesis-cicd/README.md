@@ -55,9 +55,9 @@ Outside GitHub Actions (requires both image-build jobs to succeed):
 └──────────────────────────┘    └─────────────┘    └─────────────────────┘
 ```
 
-`server -> build-server-image` and `web -> build-web-image` are independent paths. Each image job depends directly on `changes` and its own checks, not the other service. Both images are built and pushed to GHCR on relevant eligible pushes, or every release push, so both SHA tags exist for deployment. Checks may intentionally skip under the reference path-filter/release policy. A failed suite or image build does not block the other image path.
+`server -> build-server-image` and `web -> build-web-image` are independent paths. Each image job depends directly on `changes` and its own checks, not the other service. Both images are built and pushed to GHCR on relevant eligible pushes, or every release push, so both branch tags stay current; SHA tags are kept for traceability. Checks may intentionally skip under the reference path-filter/release policy. A failed suite or image build does not block the other image path.
 
-There is **no deploy job**. The skill also writes `docker-compose.prod.yml` (postgres + server + web from GHCR) and `.env.example` for the VM; the genesis scaffold no longer ships a prod compose. Configure Overwatcher's Workflow field as `ci.yml`, select the deployment branch, and verify that the integration requires a successful push run **and both `build-server-image` and `build-web-image` to succeed**. Both deployed images must use that run's `head_sha` tags, not mutable branch tags or shared `latest`. A partial build must not deploy.
+There is **no deploy job**. The skill also writes `docker-compose.prod.yml` (postgres + server + web from GHCR) and `.env.example` for the VM; the genesis scaffold no longer ships a prod compose. Configure Overwatcher's Workflow field as `ci.yml`, select the deployment branch. Overwatcher deploys a fixed tag per service, so the compose pins the deploy branch tag, never shared `latest`. A failed image job fails the run, so a partial build does not deploy.
 
 ## Railway: test only; build and deploy externally
 

@@ -292,9 +292,9 @@ POSTGRES_PASSWORD=changeme
 
 Checklist for the user:
 
-1. GitHub App subscribed to `workflow_run` with Actions read permission. Verify it filters completed, successful runs to `event == 'push'` on the configured branch and checks that this run's `build-server-image` and `build-web-image` jobs both concluded `success`. A successful workflow with skipped builds must not deploy. If the installed integration cannot check job conclusions, resolve that prerequisite before claiming downstream no-op skipping is supported.
+1. GitHub App subscribed to `workflow_run` with Actions read permission. Overwatcher deploys only successful runs whose `head_branch` matches the service's branch.
 2. Register `server` and `web` with the `overwatcher` skill: `name` is the compose service key, `image` and `tag` match the compose `image:` line, `workflow` is `ci.yml`, `branch` is `<branch>`, and `root_directory` is `services/<app>-server` or `services/<app>-web`.
-3. Resolve both image tags from that run's `head_sha`. If the integration only supports fixed tags, resolve SHA selection as a prerequisite before enabling deployment. Do not deploy branch aliases or shared `latest`: a later failed/cancelled build may have overwritten only one image's mutable tag, even though the triggering run succeeded.
+3. To roll back, point the VM compose `image:` at a pushed SHA tag and run `docker compose up -d`; set it back to the branch tag to resume deploys.
 
 ## CD tail: railway
 
