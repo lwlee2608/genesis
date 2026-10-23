@@ -34,7 +34,7 @@ Railway project: <app>
 
 4. **Find required variables before creating anything.** Grep `cmd/<app>/main.go` for config checks that `os.Exit` — each needs a variable. Config keys map to env with `.` → `_` (`http.port` → `HTTP_PORT`).
 
-5. **Use the Railway Postgres template.** It ships with a volume, the Database tab, backups, and `DATABASE_URL` / `PG*` variables. Only if a migration runs `CREATE EXTENSION postgis` fall back to a `postgis/postgis` image service (see PostGIS exception) — the template image lacks it.
+5. **Use the Railway Postgres template.** It ships with a volume, the Database tab, backups, and `DATABASE_URL` / `PG*` variables. Only if a migration runs `CREATE EXTENSION vector` fall back to a `pgvector/pgvector` image service (see pgvector exception) — the template image lacks it.
 
 6. **Resolve the project and environment IDs first.** If the repo root is linked, read `~/.railway/config.json` (`.projects["<abs repo path>"].project`). Otherwise `list-projects`, or `railway init --name <app>` from the repo root. Resolve the target environment with `list-services`; use explicit project, environment, and service IDs for configuration and verification.
 
@@ -58,11 +58,11 @@ Railway project: <app>
 
 If `docker-compose.yml` has more infra than Postgres (Redis, MinIO, etc.), create each from the official Railway template, not a plain image, and do it before the server so its variables can be referenced. Fall back to `create-service` with `image:` only when no template exists.
 
-## PostGIS exception
+## pgvector exception
 
 Replaces step 1's Postgres and adds what the template would have provided:
 
-- `create-service` `Postgres` with `image: postgis/postgis:<tag from docker-compose.yml>`.
+- `create-service` `Postgres` with `image: pgvector/pgvector:<tag from docker-compose.yml>`.
 - `set-variables` (`skipDeploys: true`): `POSTGRES_DB=<app_underscore>`, `POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=<openssl rand -hex 24>`, `PGDATA=/var/lib/postgresql/data/pgdata` (volume root isn't empty), `PGHOST=${{RAILWAY_PRIVATE_DOMAIN}}`, `PGPORT=5432`, `PGUSER=${{POSTGRES_USER}}`, `PGPASSWORD=${{POSTGRES_PASSWORD}}`, `PGDATABASE=${{POSTGRES_DB}}` (the `PG*` set turns on the dashboard's Database tab), `DATABASE_URL=postgres://${{POSTGRES_USER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{POSTGRES_DB}}`.
 - `create-volume` on Postgres, `mountPath: /var/lib/postgresql/data`.
 - No Database tab in the dashboard; that only comes with the template.
@@ -76,7 +76,7 @@ Replaces step 1's Postgres and adds what the template would have provided:
 ## Common mistakes to watch for
 
 - **Setting only `PORT`.** The server reads `HTTP_PORT`; without it the healthcheck probes the wrong port and every deploy fails.
-- **Skipping `PGDATA` on a postgis image service.** The volume root isn't empty, so Postgres refuses to init without a subdirectory.
+- **Skipping `PGDATA` on a pgvector image service.** The volume root isn't empty, so Postgres refuses to init without a subdirectory.
 - **Connecting the source before variables/settings.** The first build fires immediately and runs with missing config.
 - **Using a plain image service when the template would do.** You lose the Database tab and backups for nothing.
 - **Using the placeholder `project-00` in `watchPatterns` or service names.** References like `${{project-00-server.RAILWAY_PRIVATE_DOMAIN}}` resolve to empty.
