@@ -26,7 +26,7 @@ reference/project-00/
     │   ├── Dockerfile
     │   ├── Makefile
     │   └── sqlc.yaml
-    └── project-00-web/         # React/Vite/TS app, Oxlint
+    └── project-00-web/         # React/Vite/TS app
         ├── src/                # main.tsx, App.tsx
         ├── Dockerfile          # build + nginx serve
         ├── nginx.conf
