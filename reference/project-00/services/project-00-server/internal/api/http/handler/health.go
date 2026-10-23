@@ -3,8 +3,9 @@ package handler
 import (
 	"net/http"
 
-	"github.com/lwlee2608/project-00/internal/api/http/dto"
 	"github.com/gin-gonic/gin"
+
+	"github.com/lwlee2608/project-00/internal/api/http/dto"
 )
 
 type HealthHandler struct{}

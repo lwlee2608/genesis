@@ -5,7 +5,7 @@ APP             := project-00
 VERSION         ?= $(shell cat VERSION)
 COMMIT_SHA      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 LDFLAGS         := -ldflags "-X main.AppVersion=$(VERSION)-$(COMMIT_SHA)"
-IMAGE           ?= $(APP)
+IMAGE           ?= $(APP)-server
 
 .PHONY: all help build clean run test dep generate docker
 

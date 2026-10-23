@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+
 	internalhttp "github.com/lwlee2608/project-00/internal/api/http"
 	"github.com/lwlee2608/project-00/internal/db"
 	"github.com/lwlee2608/project-00/internal/db/sqlc"
@@ -18,7 +19,7 @@ var AppVersion = "dev"
 func main() {
 	if err := InitConfig(); err != nil {
 		slog.Error("Failed to init config", "error", err)
-		return
+		os.Exit(1)
 	}
 
 	slog.Info("project-00", "version", AppVersion)
@@ -47,6 +48,8 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+	// Private ranges cover nginx on the VM and Railway. Behind a public proxy (GKE load balancer, Cloudflare), add its ranges or set TrustedPlatform.
+	engine.SetTrustedProxies([]string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"})
 	internalhttp.SetupRoute(engine, services)
 
 	server := &http.Server{
@@ -57,5 +60,6 @@ func main() {
 	slog.Info("Starting HTTP server", "address", server.Addr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("HTTP server error", "error", err)
+		os.Exit(1)
 	}
 }

@@ -229,11 +229,72 @@ Kubernetes is no longer a tail on the both-image GHCR pipeline. Use [kubernetes.
 
 ## CD tail: overwatcher
 
-No job. Checklist for the user:
+No job. Write `docker-compose.prod.yml` and `.env.example` at the repo root; the user copies both to the VM path passed to `owctl project create --compose-file`. Use the Postgres image from the project's `docker-compose.yml`, the underscore form of the app name for the database and user, and the deploy branch (`main`, or `release` for prod under `release-prod`) as `<branch>`.
 
-1. GitHub App subscribed to `workflow_run` with Actions read permission. Verify it filters completed, successful runs to `event == 'push'` on the configured branch and checks that this run's `build-server-image` and `build-web-image` jobs both concluded `success`. A successful workflow with skipped builds must not deploy. If the installed integration cannot check job conclusions, resolve that prerequisite before claiming downstream no-op skipping is supported.
-2. In Overwatcher, set the service's Workflow field to `ci.yml` and its branch (`main`, or `release` for prod under `release-prod`).
-3. Resolve both image tags from that run's `head_sha`. If the integration only supports fixed tags, resolve SHA selection as a prerequisite before enabling deployment. Do not deploy branch aliases or shared `latest`: a later failed/cancelled build may have overwritten only one image's mutable tag, even though the triggering run succeeded.
+Overwatcher deploys each service's fixed `tag`, not the run's SHA, so pin the branch tag the image jobs push. Do not use `${IMAGE}:${IMAGE_TAG}`: the agent sets one `IMAGE` per service run, and `up -d web` also reconciles its `server` dependency with that value.
+
+```yaml
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_DB: <app_db>
+      POSTGRES_USER: <app_db>
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U <app_db> -d <app_db>"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  server:
+    image: ghcr.io/<owner>/<app>-server:<branch>
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      DB_URL: postgres://<app_db>:${POSTGRES_PASSWORD}@postgres:5432/<app_db>?sslmode=disable
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: ghcr.io/<owner>/<app>-web:<branch>
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "80:80"
+    environment:
+      PORT: 80
+      BACKEND_URL: http://server:8080
+    depends_on:
+      - server
+
+volumes:
+  postgres-data:
+```
+
+`.env.example` (the VM copy is `.env`, beside the compose file):
+
+```sh
+POSTGRES_PASSWORD=changeme
+```
+
+Checklist for the user:
+
+1. GitHub App subscribed to `workflow_run` with Actions read permission. Overwatcher deploys only successful runs whose `head_branch` matches the service's branch.
+2. Register `server` and `web` with the `overwatcher` skill: `name` is the compose service key, `image` and `tag` match the compose `image:` line, `workflow` is `ci.yml`, `branch` is `<branch>`, and `root_directory` is `services/<app>-server` or `services/<app>-web`.
+3. To roll back, point the VM compose `image:` at a pushed SHA tag and run `docker compose up -d`; set it back to the branch tag to resume deploys.
 
 ## CD tail: railway
 
