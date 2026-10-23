@@ -1,9 +1,9 @@
 ---
 name: genesis
-description: Use when scaffolding a full-stack project — a Go backend, a React/Vite web frontend, Dockerfiles, docker-compose, a Makefile, sqlc. Refers to reference/project-00 in github.com/lwlee2608/genesis as the canonical template.
+description: Use when starting a new repo or scaffolding a full-stack project — a Go backend, a React/Vite web frontend, Dockerfiles, docker-compose, a Makefile, sqlc. Refers to reference/project-00 in github.com/lwlee2608/genesis as the canonical template.
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[server | web | docker-compose | Dockerfile | Makefile | sqlc]"
+argument-hint: "[new | server | web | docker-compose | Dockerfile | Makefile | sqlc]"
 ---
 
 # genesis Reference Template
@@ -37,6 +37,23 @@ reference/project-00/
         ├── nginx.conf
         └── entrypoint.sh
 ```
+
+## New repo
+
+When the argument is `new`, or the target directory is empty apart from `.git`, create the skeleton with the genesis CLI first. Then use the template only for what the CLI does not generate.
+
+1. Check that `genesis` is on `PATH`. If it is missing, ask the user before running the install script from the README.
+2. Run it non-interactively from the target directory:
+   ```bash
+   genesis -name <app> -module <module>
+   ```
+   - Never run bare `genesis`. It opens a TUI and exits 1 without a TTY.
+   - `-name` defaults to the directory name and `-module` to the `origin` remote. Pass both when either is missing or wrong.
+   - `-fullstack` and `-http` default to `true`. Pass `-fullstack=false` for a backend-only project and `-http=false` for no HTTP layer.
+   - The AI README is off. Add `-readme -desc "<one line>"` only if the user asks for it. It needs `OPENROUTER_API_KEY`.
+   - It refuses a non-empty directory. Add `-force` only after the user confirms that overwriting is fine.
+   - `flag provided but not defined` means the installed binary predates flag mode. Ask the user to upgrade.
+3. Verify the result: `make build` in the backend dir (`services/<app>-server` when full stack), and `pnpm install` in `services/<app>-web`.
 
 ## Arguments
 

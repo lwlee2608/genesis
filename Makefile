@@ -12,9 +12,9 @@ clean:
 	$(GO) clean -testcache
 	$(RM) -rf bin/*
 build:
-	$(GO) build -o bin/$(APP)	$(LDFLAGS) cmd/$(APP)/*.go
+	$(GO) build -o bin/$(APP)	$(LDFLAGS) ./cmd/$(APP)
 run:
-	$(GO) run $(LDFLAGS) cmd/$(APP)/*.go
+	$(GO) run $(LDFLAGS) ./cmd/$(APP)
 test:
 	$(GO) test -v ./...
 install: build

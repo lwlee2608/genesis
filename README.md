@@ -29,3 +29,12 @@ This will install the binary to `~/.local/bin/genesis`. Make sure `~/.local/bin`
 cd /path/to/new/project
 genesis
 ```
+
+Non-interactive (for scripts and coding agents) — any flag, or `-y` to accept detected defaults:
+
+```bash
+genesis -name foo -module github.com/u/foo -fullstack=false
+genesis -y
+```
+
+Run `genesis -h` for all flags. Flag mode refuses a non-empty directory unless `-force` is given, and skips the AI README unless `-readme` is given.
