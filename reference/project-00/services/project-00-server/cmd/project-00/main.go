@@ -48,7 +48,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.Use(gin.Recovery())
-	engine.SetTrustedProxies(nil)
+	engine.SetTrustedProxies([]string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"})
 	internalhttp.SetupRoute(engine, services)
 
 	server := &http.Server{
