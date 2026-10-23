@@ -73,6 +73,7 @@ func main() {
 		AddHTTP:    result.AddHTTP,
 		FullStack:  result.FullStack,
 		OutputDir:  outputDir,
+		Version:    AppVersion,
 	}
 
 	if err := scaffold.Generate(cfg); err != nil {

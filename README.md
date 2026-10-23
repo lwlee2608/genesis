@@ -38,3 +38,5 @@ genesis -y
 ```
 
 Run `genesis -h` for all flags. Flag mode refuses a non-empty directory unless `-force` is given, and skips the AI README unless `-readme` is given.
+
+Every scaffold writes `.genesis.json` at the repo root, recording the genesis version, creation date, and options. Find genesis-made repos with `gh search code --filename .genesis.json`.
