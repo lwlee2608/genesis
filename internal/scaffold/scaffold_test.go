@@ -16,7 +16,9 @@ func TestGenerate(t *testing.T) {
 	cfg := Config{
 		AppName:    "testapp",
 		ModuleName: "github.com/test/testapp",
+		AddHTTP:    true,
 		OutputDir:  tmpDir,
+		Version:    "v1.2.3",
 	}
 
 	if err := Generate(cfg); err != nil {
@@ -65,6 +67,18 @@ func TestGenerate(t *testing.T) {
 	}
 	if !strings.Contains(string(gitignore), "bin/") {
 		t.Error(".gitignore does not contain bin/")
+	}
+
+	data, err := os.ReadFile(filepath.Join(tmpDir, MarkerFile))
+	if err != nil {
+		t.Fatalf("failed to read %s: %v", MarkerFile, err)
+	}
+	var m marker
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("invalid %s: %v", MarkerFile, err)
+	}
+	if m.Version != "v1.2.3" || !m.HTTP || m.FullStack || m.Created == "" {
+		t.Errorf("unexpected marker: %+v", m)
 	}
 }
 

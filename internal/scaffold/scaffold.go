@@ -1,11 +1,15 @@
 package scaffold
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"text/template"
+	"time"
 )
+
+const MarkerFile = ".genesis.json"
 
 type Config struct {
 	AppName    string
@@ -13,6 +17,14 @@ type Config struct {
 	AddHTTP    bool
 	FullStack  bool
 	OutputDir  string
+	Version    string
+}
+
+type marker struct {
+	Version   string `json:"version"`
+	Created   string `json:"created"`
+	FullStack bool   `json:"fullstack"`
+	HTTP      bool   `json:"http"`
 }
 
 // Generate scaffolds the backend and, for full-stack projects, the frontend.
@@ -32,7 +44,20 @@ func Generate(cfg Config) error {
 		}
 	}
 
-	return nil
+	return writeMarker(cfg)
+}
+
+func writeMarker(cfg Config) error {
+	data, err := json.MarshalIndent(marker{
+		Version:   cfg.Version,
+		Created:   time.Now().Format(time.DateOnly),
+		FullStack: cfg.FullStack,
+		HTTP:      cfg.AddHTTP,
+	}, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(cfg.OutputDir, MarkerFile), append(data, '\n'), 0644)
 }
 
 // writeTemplate renders tmplStr with data and writes the result to destPath.
